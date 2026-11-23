@@ -14,6 +14,11 @@ ARG CORAZA_CADDY_VERSION="n/a"
 # See https://github.com/coreruleset/coreruleset/issues/3277
 ARG CORAZA_BUILD_TAGS="coraza.rule.no_regex_multiline"
 
+# Comma-separated xcaddy --with specs: a Go module path, optionally @version
+# or =replacement. Pin versions. No spaces or shell metacharacters.
+# Example: github.com/caddyserver/replace-response@v0.2.0,github.com/foo/bar@v1.2.3
+ARG CADDY_EXTRA_MODULES=""
+
 # Build Caddy with Coraza
 # The module path must carry the /v2 suffix: without it Go resolves the v1
 # module (coraza-caddy v1.2.2), whatever CORAZA_CADDY_VERSION says.
@@ -21,7 +26,8 @@ ARG CORAZA_BUILD_TAGS="coraza.rule.no_regex_multiline"
 # here (-ldflags '-w -s' -trimpath -tags nobadger,nomysql,nopgx) next to ours.
 RUN --mount=type=cache,target=/go,id=caddy \
   XCADDY_GO_BUILD_FLAGS="-ldflags '-w -s' -trimpath -tags nobadger,nomysql,nopgx,${CORAZA_BUILD_TAGS}" \
-  xcaddy build --with github.com/corazawaf/coraza-caddy/v2@${CORAZA_CADDY_VERSION}
+  xcaddy build --with github.com/corazawaf/coraza-caddy/v2@${CORAZA_CADDY_VERSION} \
+    $(echo "$CADDY_EXTRA_MODULES" | awk -F',' '{for(i=1;i<=NF;i++){gsub(/^[ \t]+|[ \t]+$/,"",$i); if($i!="") printf "--with %s ",$i}}')
 
 # Use official caddy builder image to get Core Rule Set
 FROM caddy:${CADDY_VERSION}-builder AS builder-crs
